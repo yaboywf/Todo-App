@@ -16,7 +16,7 @@
     final password = TextEditingController();
 
     Future<void> sendAuthentication() async {
-      final url = "http://0.0.0.0:3000/api/authenticate";
+      final url = "http://192.168.0.189:3000/api/authenticate";
       final data = {
         "username": username.text,
         "password": password.text
@@ -36,7 +36,7 @@
         if (response.statusCode == 200) {
           print('Data sent successfully: ${response.body}');
         } else {
-          print('Failed to send data. Status code: ${response.statusCode}');
+          print('Failed to send data. Status code: ${response.statusCode} ${response.body}');
         }
       } catch (err) {
         print(err);
@@ -47,6 +47,7 @@
     Widget build(BuildContext context) {
       return Scaffold(
         appBar: AppBar(
+          automaticallyImplyLeading: false,
           backgroundColor: Colors.grey,
           title: Row(
             children: [
@@ -154,8 +155,8 @@
                         iconColor: Colors.black,
                       ),
                       onPressed: () {
-                        Navigator.pushReplacementNamed(context, '/profile');
-                        // sendAuthentication();
+                        // Navigator.pushReplacementNamed(context, '/profile');
+                        sendAuthentication();
                       },
                       icon: Icon(Icons.login),
                       label: Text("Login", style: TextStyle(
