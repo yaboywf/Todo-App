@@ -4,6 +4,7 @@ import 'package:flutter/material.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
 import 'package:shared_preferences/shared_preferences.dart';
+import 'functions.dart';
 
 class Login extends StatefulWidget {
   const Login({super.key});
@@ -52,7 +53,18 @@ class _LoginState extends State<Login> {
           children: [
             Image(image: AssetImage("assets/logo.png"), height: 50),
             SizedBox(width: 10),
-            Text("To-Do App", style: TextStyle(fontWeight: FontWeight.bold),)
+            Text("To-Do App", style: TextStyle(fontWeight: FontWeight.bold),),
+            Expanded(
+              child: Align(
+                alignment: Alignment.centerRight,
+                child: IconButton(
+                  onPressed: () {
+                    Navigator.pushReplacementNamed(context, "/profile");
+                  },
+                  icon: Icon(Icons.menu),
+                ),
+              ),
+            )
           ],
         ),
       ),
@@ -155,10 +167,9 @@ class _LoginState extends State<Login> {
                     ),
                     onPressed: () async {
                       Map<String, dynamic> result = await sendAuthentication();
-                      print(result);
                       if (!context.mounted) return;
                       if (result.isNotEmpty && result["message"] == "Authentication failed") {
-                        showAlertDialog(context, result["message"]);
+                        showAlertDialog(context, "Authentication Failed");
                       } else {
                         if (result.containsKey('token')) {
                           String token = result['token'];
@@ -183,23 +194,3 @@ class _LoginState extends State<Login> {
     );
   }
 }
-
-void showAlertDialog(BuildContext context, String message) {
-// Create an AlertDialog
-showDialog(
-  context: context,
-  builder: (BuildContext context) {
-    return AlertDialog(
-      title: Text('Alert'),
-      content: Text(message),
-      actions: <Widget>[
-        TextButton(
-          child: Text('OK'),
-          onPressed: () {
-            Navigator.of(context).pop(); // Close the dialog
-          },
-        ),
-      ],
-    );
-  },
-);}
