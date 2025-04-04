@@ -6,7 +6,7 @@ void showAlertDialog(BuildContext context, String message, {Function? afterwards
     context: context,
     builder: (BuildContext context) {
       return AlertDialog(
-        title: Text('Alert'),
+        title: Center(child: Text('Alert')),
         content: Text(message),
         actions: <Widget>[
           TextButton(

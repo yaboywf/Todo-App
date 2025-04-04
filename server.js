@@ -6,6 +6,8 @@ const bcrypt = require('bcryptjs');
 const jwt = require('jsonwebtoken');
 const session = require('express-session');
 const sqlite3 = require('sqlite3').verbose();
+const path = require('path');
+const fs = require('fs');
 const { encrypt, decrypt, getKey, createIv, encryptImage, decryptImage } = require('./encryption');
 require('dotenv').config();
 
@@ -109,6 +111,25 @@ app.put("/api/update_user_data/username", authenticateToken, (req, res) => {
         if (this.changes === 0) return res.status(404).json({ message: "User not found" });
 
         res.json({ message: "Username updated successfully" });
+    })
+})
+
+app.put("/api/update_user_data/image", authenticateToken, async (req, res) => {
+    const image = req.body?.image;
+    const bufferImage = Buffer.from(image, 'base64');
+ 
+    db.get('SELECT * FROM users WHERE id = ?;', [req.user.id], (err, user) => {
+        if (err) return res.status(500).json({ error: err.message });
+        if (!user) return res.status(404).json({ message: "User not found" });
+
+        const encryptedImage = encryptImage(bufferImage, getKey(req.user.enteredPassword, user.password.split("$")[3]), Buffer.from(user.iv, 'hex'));
+
+        db.run('UPDATE users SET user_image = ? WHERE id = ?;', [encryptedImage, req.user.id], (err) => {
+            if (err) return res.status(500).json({ error: err.message });
+            if (this.changes === 0) return res.status(404).json({ message: "User not found" });
+
+            res.json({ message: "Image updated successfully" });
+        })
     })
 })
 

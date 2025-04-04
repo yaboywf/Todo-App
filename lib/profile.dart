@@ -21,6 +21,8 @@ class _ProfilePageState extends State<ProfilePage> {
   late TextEditingController usernameController;
   File? image;
   final ImagePicker picker = ImagePicker();
+  late bool imagePicked = false;
+  String currentUsername = ""; 
 
   Future<void> validateSession(BuildContext context) async {
     String? token = await getToken();
@@ -118,6 +120,8 @@ class _ProfilePageState extends State<ProfilePage> {
       return;
     }
 
+    if (newUsername == currentUsername) return;
+
     final response = await http.put(
       Uri.parse("http://192.168.0.189:3000/api/update_user_data/username"),
       headers: {
@@ -146,9 +150,44 @@ class _ProfilePageState extends State<ProfilePage> {
     if (pickedFile != null) {
       setState(() {
         image = File(pickedFile.path);
+        imagePicked = true;
       });
+    }
+  }
+
+  Future<void> updateImage(BuildContext context) async {
+    String? token = await getToken();
+
+    if (image == null) {
+      if (!context.mounted) return;
+      showAlertDialog(context, "No image selected");
+      return;
+    }
+
+    List<int> imageBytes = await image!.readAsBytes();
+    String base64Image = base64Encode(imageBytes);
+
+    var jsonBody = json.encode({
+      "image": base64Image,
+    });
+
+    var uri = Uri.parse("http://192.168.0.189:3000/api/update_user_data/image");
+    var request = http.Request('PUT', uri);
+    request.headers['Content-Type'] = 'application/json';
+    request.headers['authorization'] = 'Bearer $token';
+    request.body = jsonBody;
+    var response = await request.send();
+
+    if (response.statusCode == 200) {
+      if (!context.mounted) return;
+      showAlertDialog(context, "User Profile Image updated successfully", afterwards: () => Navigator.pushReplacementNamed(context, "/profile"));      
+    } else if (response.statusCode == 403) {
+      if (!context.mounted) return;
+      Navigator.pushReplacementNamed(context, "/");
     } else {
-      print('No image selected.');
+      if (!context.mounted) return;
+      showAlertDialog(context, "Unable to update image");
+      return;
     }
   }
 
@@ -204,6 +243,7 @@ class _ProfilePageState extends State<ProfilePage> {
             var base64Image = userData['user_image'];
             var username = userData['username'];
 
+            currentUsername = username;
             Uint8List decodedImage = base64Decode(base64Image);
             usernameController = TextEditingController(text: username);
             
@@ -228,7 +268,7 @@ class _ProfilePageState extends State<ProfilePage> {
                       Center(
                         child: CircleAvatar(
                           radius: 50,
-                          backgroundImage: MemoryImage(decodedImage),
+                          backgroundImage: image != null ? FileImage(image!) : MemoryImage(decodedImage),
                         ),
                       ),
                       SizedBox(height: 20),
@@ -268,6 +308,7 @@ class _ProfilePageState extends State<ProfilePage> {
                           OutlinedButton.icon(
                             onPressed: () {
                               updateUsername(context);
+                              if (imagePicked) updateImage(context);
                             },
                             label: Text("Save", style: TextStyle(
                               color: Colors.black
