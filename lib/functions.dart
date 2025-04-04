@@ -1,7 +1,7 @@
 import 'package:flutter/material.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 
-void showAlertDialog(BuildContext context, String message) {
+void showAlertDialog(BuildContext context, String message, {Function? afterwards}) {
   showDialog(
     context: context,
     builder: (BuildContext context) {
@@ -12,7 +12,10 @@ void showAlertDialog(BuildContext context, String message) {
           TextButton(
             child: Text('OK'),
             onPressed: () {
-              Navigator.of(context).pop(); // Close the dialog
+              Navigator.of(context).pop();
+              if (afterwards != null) {
+                afterwards();
+              }
             },
           ),
         ],

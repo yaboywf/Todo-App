@@ -6,6 +6,8 @@ import 'package:http/http.dart' as http;
 import 'functions.dart';
 import 'package:shared_preferences/shared_preferences.dart';
 import 'dart:typed_data';
+import 'package:image_picker/image_picker.dart';
+import 'dart:io';
 
 class ProfilePage extends StatefulWidget {
   const ProfilePage({super.key});
@@ -17,6 +19,8 @@ class ProfilePage extends StatefulWidget {
 class _ProfilePageState extends State<ProfilePage> {
   Future<Map<String, dynamic>>? user;
   late TextEditingController usernameController;
+  File? image;
+  final ImagePicker picker = ImagePicker();
 
   Future<void> validateSession(BuildContext context) async {
     String? token = await getToken();
@@ -96,12 +100,55 @@ class _ProfilePageState extends State<ProfilePage> {
       SharedPreferences prefs = await SharedPreferences.getInstance();
       await prefs.remove('auth_token');
       if (!context.mounted) return;
-      print("Logged out successfully");
       Navigator.pushReplacementNamed(context, "/");
     } else {
       if (!context.mounted) return;
       showAlertDialog(context, "Unable to logout");
       return;
+    }
+  }
+
+  Future<void> updateUsername(BuildContext context) async {
+    String newUsername = usernameController.text;
+    String? token = await getToken();
+
+    if (newUsername.isEmpty) {
+      if (!context.mounted) return;
+      showAlertDialog(context, "Username cannot be empty");
+      return;
+    }
+
+    final response = await http.put(
+      Uri.parse("http://192.168.0.189:3000/api/update_user_data/username"),
+      headers: {
+        'Content-Type': 'application/json',
+        'authorization': 'Bearer $token'
+      },
+      body: json.encode({"username": newUsername})
+    );
+
+    if (response.statusCode == 200) {
+      if (!context.mounted) return;
+      showAlertDialog(context, "Username updated successfully", afterwards: () => Navigator.pushReplacementNamed(context, "/profile"));      
+    } else if (response.statusCode == 403) {
+      if (!context.mounted) return;
+      Navigator.pushReplacementNamed(context, "/");
+    } else {
+      if (!context.mounted) return;
+      showAlertDialog(context, "Unable to update username");
+      return;
+    }
+  }
+
+  Future<void> pickImage() async {
+    final pickedFile = await picker.pickImage(source: ImageSource.gallery);
+
+    if (pickedFile != null) {
+      setState(() {
+        image = File(pickedFile.path);
+      });
+    } else {
+      print('No image selected.');
     }
   }
 
@@ -219,7 +266,9 @@ class _ProfilePageState extends State<ProfilePage> {
                         mainAxisAlignment: MainAxisAlignment.center,
                         children: [
                           OutlinedButton.icon(
-                            onPressed: () {},
+                            onPressed: () {
+                              updateUsername(context);
+                            },
                             label: Text("Save", style: TextStyle(
                               color: Colors.black
                             ),),
@@ -260,7 +309,9 @@ class _ProfilePageState extends State<ProfilePage> {
                       backgroundColor: WidgetStatePropertyAll(Colors.white),
                       side: WidgetStatePropertyAll(BorderSide(color: Colors.black)),
                     ),
-                    onPressed: () {},
+                    onPressed: () {
+                      pickImage();
+                    },
                     child: Icon(Icons.edit),
                   ),
                 ),

@@ -55,18 +55,11 @@ passport.deserializeUser((id, done) => {
 
 const authenticateToken = (req, res, next) => {
     let token = req.headers.authorization;
-
-    if (!token) {
-        return res.status(401).json({ message: "Unauthorized" });
-    } else {
-        token = token.split(" ")[1];
-    }
-
+    if (!token) return res.status(401).json({ message: "Unauthorized" });
+    token = token.split(" ")[1];
+    
     jwt.verify(token, process.env.SECRET_KEY, (err, decoded) => {
-        if (err) {
-            return res.status(403).json({ message: "Unauthorized" });
-        }
-
+        if (err) return res.status(403).json({ message: "Unauthorized" });
         req.user = decoded;
         next();
     });
@@ -109,11 +102,21 @@ app.post("/api/logout", authenticateToken, (req, res) => {
     });
 })
 
+app.put("/api/update_user_data/username", authenticateToken, (req, res) => {
+    const username = req.body?.username;
+    db.run('UPDATE users SET username = ? WHERE id = ?;', [username, req.user.id], (err) => {
+        if (err) return res.status(500).json({ error: err.message });
+        if (this.changes === 0) return res.status(404).json({ message: "User not found" });
+
+        res.json({ message: "Username updated successfully" });
+    })
+})
+
 app.listen(3000, "192.168.0.189", (error) => {
     if (error) {
         console.error(error);
         return;
     }
 
-    console.log("server is running")
+    console.log("server is running");
 })
