@@ -12,34 +12,7 @@ class Tasks extends StatefulWidget {
   State<Tasks> createState() => _TasksState();
 }
 
-class _TasksState extends State<Tasks> {
-  // final Map<String, dynamic> tasks = {
-  //   "Complete the Project Report": {
-  //     "due": "2023-12-31",
-  //     "completed": false,
-  //     "subtasks": {
-  //       "Gather all data from team membersssssss": {
-  //         "due": "2023-12-31",
-  //         "completed": false,
-  //       },
-  //       "Write report": {
-  //         "due": "2023-12-31",
-  //         "completed": true,
-  //       },
-  //       "Submit report": {
-  //         "due": "2023-12-31",
-  //         "completed": false,
-  //       }
-  //     }
-  //   },
-  //   "Prepare for Team Meeting": {
-  //     "due": "2023-12-31",
-  //     "completed": false,
-  //     "subtasks": {}
-  //   }
-  // };
-
-
+class _TasksState extends State<Tasks> { 
   Map<String, dynamic> tasks = {};
 
   Future<void> validateSession(BuildContext context) async {
@@ -75,12 +48,12 @@ class _TasksState extends State<Tasks> {
     }
   }
 
-  Future<void> getParentTasks() async {
+  Future<void> getTasks() async {
     String? token = await getToken();
 
     try {
       final response = await http.get(
-        Uri.parse("http://192.168.0.189:3000/api/get_parent_tasks"),
+        Uri.parse("http://192.168.0.189:3000/api/get_tasks"),
         headers: {
           'Content-Type': 'application/json',
           'authorization': 'Bearer $token',
@@ -105,7 +78,7 @@ class _TasksState extends State<Tasks> {
   void initState() {
     super.initState();
     validateSession(context);
-    getParentTasks();
+    getTasks();
   }
 
   @override

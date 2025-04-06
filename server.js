@@ -133,7 +133,7 @@ app.put("/api/update_user_data/image", authenticateToken, async (req, res) => {
     })
 })
 
-app.get("/api/get_parent_tasks", authenticateToken, async (req, res) => {
+app.get("/api/get_tasks", authenticateToken, async (req, res) => {
     try {
         const tasks = await new Promise((resolve, reject) => {
             db.all('SELECT t.*, password, iv FROM parent_task t JOIN users ON t.user_id = users.id WHERE t.user_id = ?;', [req.user.id], (err, tasks) => {
@@ -193,6 +193,35 @@ async function getSubTasks(user, task) {
         })
     });
 }
+
+app.post("/api/create_task", authenticateToken, async (req, res) => {
+    const { task_type, parent_task_id, task_name, due_date } = req.body;
+    
+    db.get('SELECT * FROM users WHERE id = ?;', [req.user.id], (err, user) => {
+        if (err) return res.status(500).json({ error: err.message });
+        if (!user) return res.status(404).json({ message: "User not found" });
+
+        const encryptionKey = getKey(req.user.enteredPassword, user.password.split("$")[3]);
+        const iv = Buffer.from(user.iv, 'hex');
+
+        const encryptedTaskName = encrypt(task_name, encryptionKey, iv);
+        const encryptedDueDate = due_date ? encrypt(due_date, encryptionKey, iv) : null;
+
+        if (task_type.tolowerCase() === "parent") {
+            db.run('INSERT INTO parent_task (user_id, task_name, due_date, completed) VALUES (?, ?, ?, 0);', [req.user.id, encryptedTaskName, encryptedDueDate], (err) => {
+                if (err) return res.status(500).json({ error: err.message });
+
+                return res.json({ message: "Task created successfully" });
+            })
+        } else if (task_type.tolowerCase() === "sub") {
+            db.run('INSERT INTO sub_task (user_id, parent_task_id, task_name, due_date) VALUES (?, ?, ?, ?, 0);', [req.user.id, parent_task_id, encryptedTaskName, encryptedDueDate], (err) => {
+                if (err) return res.status(500).json({ error: err.message });
+
+                return res.json({ message: "Task created successfully" });
+            })
+        }
+    })
+})
 
 app.listen(3000, "192.168.0.189", (error) => {
     if (error) {
