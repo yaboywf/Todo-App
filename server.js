@@ -75,13 +75,13 @@ app.post('/api/authenticate', (req, res, next) => {
         req.login(user, (err) => {
             if (err) return res.status(500).json({ error: err.message });
             const token = jwt.sign({ id: req.user.id, enteredPassword: req.body.password }, process.env.SECRET_KEY, { expiresIn: '6h' });
-            res.json({ token });
+            return res.json({ token });
         });
     })(req, res, next);
 });
 
 app.get("/api/check_session", authenticateToken, (req, res) => {
-    res.json({ valid: true, user: req.user });
+    return res.json({ valid: true, user: req.user });
 })
 
 app.get("/api/get_user_data", authenticateToken, (req, res) => {
@@ -92,7 +92,7 @@ app.get("/api/get_user_data", authenticateToken, (req, res) => {
         const decryptedImage = decryptImage(user.user_image, getKey(req.user.enteredPassword, user.password.split("$")[3]), Buffer.from(user.iv, 'hex'));
         const base64Image = decryptedImage.toString('base64');
         user.user_image = base64Image;
-        res.json(user);
+        return res.json(user);
     });
 })
 
@@ -100,7 +100,7 @@ app.post("/api/logout", authenticateToken, (req, res) => {
     req.logout(err => {
         if (err) return res.status(500).json({ error: err.message });
 
-        res.json({ message: "Logout successful" });
+        return res.json({ message: "Logout successful" });
     });
 })
 
@@ -110,7 +110,7 @@ app.put("/api/update_user_data/username", authenticateToken, (req, res) => {
         if (err) return res.status(500).json({ error: err.message });
         if (this.changes === 0) return res.status(404).json({ message: "User not found" });
 
-        res.json({ message: "Username updated successfully" });
+        return res.json({ message: "Username updated successfully" });
     })
 })
 
@@ -128,10 +128,71 @@ app.put("/api/update_user_data/image", authenticateToken, async (req, res) => {
             if (err) return res.status(500).json({ error: err.message });
             if (this.changes === 0) return res.status(404).json({ message: "User not found" });
 
-            res.json({ message: "Image updated successfully" });
+            return res.json({ message: "Image updated successfully" });
         })
     })
 })
+
+app.get("/api/get_parent_tasks", authenticateToken, async (req, res) => {
+    try {
+        const tasks = await new Promise((resolve, reject) => {
+            db.all('SELECT t.*, password, iv FROM parent_task t JOIN users ON t.user_id = users.id WHERE t.user_id = ?;', [req.user.id], (err, tasks) => {
+                if (err) return reject(err);
+                resolve(tasks);
+            });
+        });
+
+        if (!tasks || tasks.length === 0) return res.json({ tasks: "no tasks" });
+
+        for (let task of tasks) {
+            const encryptionKey = getKey(req.user.enteredPassword, task.password.split("$")[3]);
+            const iv = Buffer.from(task.iv, 'hex')
+            const decryptedTaskName = decrypt(task.task_name, encryptionKey, iv);
+            const decryptedDueDate = task.due_date ? decrypt(task.due_date, encryptionKey, iv) : null;
+
+            task.task_name = decryptedTaskName;
+            task.due_date = decryptedDueDate;
+            task.subtasks = {};
+            task.completed = Boolean(task.completed);
+
+            const subtasks = await getSubTasks(req.user.id, task);
+
+            if (subtasks) {
+                for (let subtask of subtasks) {
+                    const decryptedSubtaskName = decrypt(subtask.task_name, encryptionKey, iv);
+                    const decryptedDueDate = subtask.due_date ? decrypt(subtask.due_date, encryptionKey, iv) : null;
+
+                    const key = subtask.task_name = decryptedSubtaskName;
+                    subtask.due_date = decryptedDueDate;
+                    subtask.completed = Boolean(subtask.completed);
+
+                    delete subtask.parent_task_id;
+                    delete subtask.user_id;
+                    delete subtask.task_name;
+
+                    task.subtasks[key] = subtask;
+                };
+            }
+
+            delete task.user_id;
+            delete task.password;
+            delete task.iv;
+            return res.json(tasks);
+        }
+    } catch (err) {
+        return res.status(500).json({ error: err.message });
+    }
+})
+
+async function getSubTasks(user, task) {
+    return new Promise((resolve, reject) => {
+        db.all('SELECT * FROM sub_task WHERE user_id = ? AND parent_task_id = ?;', [user, task.id], (err, subtasks) => {
+            if (err) return reject(err);
+
+            resolve(subtasks);       
+        })
+    });
+}
 
 app.listen(3000, "192.168.0.189", (error) => {
     if (error) {

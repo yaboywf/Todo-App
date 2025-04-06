@@ -216,7 +216,7 @@ class _ProfilePageState extends State<ProfilePage> {
                   onPressed: () {
                     Navigator.pushReplacementNamed(context, "/profile");
                   },
-                  icon: Icon(Icons.menu),
+                  icon: Icon(Icons.account_circle),
                 ),
               ),
             )

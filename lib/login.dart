@@ -59,7 +59,7 @@ class _LoginState extends State<Login> {
                 alignment: Alignment.centerRight,
                 child: IconButton(
                   onPressed: () {
-                    Navigator.pushReplacementNamed(context, "/profile");
+                    Navigator.pushReplacementNamed(context, "/tasks");
                   },
                   icon: Icon(Icons.menu),
                 ),
