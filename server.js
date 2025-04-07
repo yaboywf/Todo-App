@@ -260,6 +260,35 @@ app.delete("/api/tasks/delete", authenticateToken, async (req, res) => {
     }
 })
 
+app.put("/api/tasks/update/completed", authenticateToken, async (req, res) => {
+    const { id, task_type, special } = req.body;
+
+    if (!id) return res.status(400).json({ message: "Task ID is required" });
+    if (!task_type) return res.status(400).json({ message: "Task type is required" });
+
+    if (task_type.toLowerCase() === "parent") {
+        db.run('UPDATE parent_task SET completed = CASE WHEN completed = 1 THEN 0 ELSE 1 END WHERE id = ? AND completed IN (0, 1);', [id], (err) => {
+            if (err) return res.status(500).json({ error: err.message });
+
+            if (special) {
+                db.run('UPDATE sub_task SET completed = 1 WHERE parent_task_id = ?;', [id], (err) => {
+                    if (err) return res.status(500).json({ error: err.message });
+
+                    return res.json({ message: "Task updated successfully" });
+                })
+            } else {
+                return res.json({ message: "Task updated successfully" });
+            }
+        })
+    } else if (task_type.toLowerCase() === "sub") {
+        db.run('UPDATE sub_task SET completed = CASE WHEN completed = 1 THEN 0 ELSE 1 END WHERE id = ? AND completed IN (0, 1);', [id], (err) => {
+            if (err) return res.status(500).json({ error: err.message });
+
+            return res.json({ message: "Task updated successfully" });
+        })
+    }
+})
+
 app.listen(3000, "192.168.0.189", (error) => {
     if (error) {
         console.error(error);

@@ -229,12 +229,14 @@ class _ProfilePageState extends State<ProfilePage> {
           if (snapshot.connectionState == ConnectionState.waiting) {
             return Center(
               child: Column(
+                mainAxisAlignment: MainAxisAlignment.center,
+                crossAxisAlignment: CrossAxisAlignment.center,
                 children: [
-                  CircularProgressIndicator(),
+                  CircularProgressIndicator(color: Colors.black,),
                   SizedBox(height: 10),
                   Text('Loading...'),
                 ],
-              )
+              ),
             );
           } else if (snapshot.hasError) {
             return Center(child: Text('Error: ${snapshot.error}'));
@@ -356,23 +358,6 @@ class _ProfilePageState extends State<ProfilePage> {
                     child: Icon(Icons.edit),
                   ),
                 ),
-                Positioned(
-                  right: 20,
-                  bottom: 40,
-                  child: ElevatedButton(
-                    onPressed: () {
-                      Navigator.pushReplacementNamed(context, "/");
-                    },
-                    style: ButtonStyle(
-                      iconColor: WidgetStatePropertyAll(Colors.black),
-                      padding: WidgetStatePropertyAll(EdgeInsets.all(18)),
-                      shape: WidgetStatePropertyAll(CircleBorder()),
-                      backgroundColor: WidgetStatePropertyAll(Colors.grey[300]),
-                      side: WidgetStatePropertyAll(BorderSide(color: Colors.black)),
-                    ),
-                    child: Icon(Icons.home, size: 20),
-                  ),
-                ),
               ],
             );
           } else {
@@ -397,12 +382,11 @@ class _ProfilePageState extends State<ProfilePage> {
                       fontWeight: FontWeight.bold
                     )),
                     SizedBox(height: 20),
-                    FloatingActionButton(
+                    OutlinedButton(
                       onPressed: () {
                         Navigator.pushReplacementNamed(context, "/");
                       },
-                      backgroundColor: Colors.black,
-                      child: Icon(Icons.refresh, color: Colors.white),
+                      child: Icon(Icons.refresh)
                     ),
                   ],
                 ),
@@ -411,6 +395,17 @@ class _ProfilePageState extends State<ProfilePage> {
           }
         },
       ),
+      floatingActionButton: FloatingActionButton(
+        onPressed: () {
+            Navigator.pushReplacementNamed(context, "/tasks");
+        },    
+        shape: CircleBorder(),
+        backgroundColor: Colors.white,
+        child: Icon(
+          Icons.home,
+          color: Colors.black,
+        ),
+      )
     );
   }
 

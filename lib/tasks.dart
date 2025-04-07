@@ -204,6 +204,28 @@ class _TasksState extends State<Tasks> {
     );
   }
 
+  void setStatus(BuildContext context, int taskId, String taskType, {bool? completed}) async {
+    String? token = await getToken();
+
+    final response = await http.put(
+      Uri.parse("http://192.168.0.189:3000/api/tasks/update/completed"),
+      headers: {
+        'Content-Type': 'application/json',
+        'authorization': 'Bearer $token',
+      },
+      body: jsonEncode({
+        "id": taskId,
+        "task_type": taskType,
+        if (taskType == "parent" && completed == true) "special": true
+      })
+    );
+
+    if (response.statusCode != 200) {
+      if (!context.mounted) return;
+      print("Error: ${json.decode(response.body)}");
+    }
+  }
+
   void sendDeleteRequest(BuildContext context, int taskId, String taskType) async {
     String? token = await getToken();
 
@@ -276,7 +298,7 @@ class _TasksState extends State<Tasks> {
             },
             child: tasks["tasks"] == "no tasks" ? Center(child: Text("No tasks")) : Card(
               key: ValueKey("parent-$parentIndex"),
-              color: completed ? Colors.green[200] : Colors.transparent,
+              color: completed && (subtasks.isEmpty || subtasks.values.every((element) => element["completed"])) ? Colors.green[200] : Colors.transparent,
               margin: EdgeInsets.all(10),
               elevation: 0,
               shape: RoundedRectangleBorder(
@@ -292,11 +314,14 @@ class _TasksState extends State<Tasks> {
                   activeColor: Colors.black,
                   value: completed,
                   onChanged: (bool? value) {
+                    setStatus(context, parentIndex, "parent", completed: value);
                     setState(() {
                       tasks[taskName]["completed"] = value!;
-                      tasks[taskName]["subtasks"].forEach((key, value) {
-                        tasks[taskName]["subtasks"][key]["completed"] = tasks[taskName]["completed"];
-                      });
+                      if (value == true) {
+                        tasks[taskName]["subtasks"].forEach((key, value) {
+                          tasks[taskName]["subtasks"][key]["completed"] = tasks[taskName]["completed"];
+                        });
+                      }
                     });
                   },
                 ),
@@ -334,9 +359,9 @@ class _TasksState extends State<Tasks> {
                           activeColor: Colors.black,
                           value: subtaskCompleted,
                           onChanged: (bool? value) {
+                            setStatus(context, subtaskIndex, "sub");
                             setState(() {
                               subtasks[subtaskTitle]["completed"] = value!;
-                              if (value == false) tasks[taskName]["completed"] = false;
                             });
                           },
                         ),
