@@ -12,7 +12,19 @@ const { encrypt, decrypt, getKey, createIv, encryptImage, decryptImage } = requi
 require('dotenv').config();
 
 const app = express();
-const db = new sqlite3.Database('database.db');
+const db = new sqlite3.Database('database.db', (err) => {
+    if (err) {
+        console.error(err.message);
+    }
+
+    db.run("PRAGMA foreign_keys = ON;", (err) => {
+        if (err) {
+            console.error('Could not enable foreign key support', err);
+        } else {
+            console.log('Foreign key support enabled');
+        }
+    });
+});
 
 app.use(cors({
     origin: "http://0.0.0.0:3000",
@@ -225,6 +237,27 @@ app.post("/api/tasks/create", authenticateToken, async (req, res) => {
             })
         }
     })
+})
+
+app.delete("/api/tasks/delete", authenticateToken, async (req, res) => {
+    const { id, task_type } = req.body;
+
+    if (!id) return res.status(400).json({ message: "Task ID is required" });
+    if (!task_type) return res.status(400).json({ message: "Task type is required" });
+
+    if (task_type.toLowerCase() === "parent") {
+        db.run('DELETE FROM parent_task WHERE id = ?;', [id], (err) => {
+            if (err) return res.status(500).json({ error: err.message });
+
+            return res.json({ message: "Task deleted successfully" });
+        })
+    } else if (task_type.toLowerCase() === "sub") {
+        db.run('DELETE FROM sub_task WHERE id = ?;', [id], (err) => {
+            if (err) return res.status(500).json({ error: err.message });
+
+            return res.json({ message: "Task deleted successfully" });
+        })
+    }
 })
 
 app.listen(3000, "192.168.0.189", (error) => {

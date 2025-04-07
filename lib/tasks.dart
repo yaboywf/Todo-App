@@ -110,6 +110,12 @@ class _TasksState extends State<Tasks> {
     void sendCreateRequest(BuildContext context) async {
       String? token = await getToken();
 
+      if (taskNameController.text.isEmpty) {
+        if (!context.mounted) return;
+        showAlertDialog(context, "Task name cannot be empty");
+        return;
+      }
+
       final response = await http.post(
         Uri.parse("http://192.168.0.189:3000/api/tasks/create"),
         headers: {
@@ -148,7 +154,7 @@ class _TasksState extends State<Tasks> {
               SizedBox(height: 10),
               TextField(
                 controller: dueDateController,
-                decoration: textDecor("Due Date"),
+                decoration: textDecor("Due Date (OPTIONAL)"),
               ),
               SizedBox(height: 10),
               Container(
@@ -163,7 +169,7 @@ class _TasksState extends State<Tasks> {
                 child: DropdownButton<String>(
                   value: selectedTaskType,
                   underline: Container(),
-                  hint: Text("Select Task Type", style: TextStyle(fontSize: 14),),
+                  hint: Text("Child Task of (OPTIONAL)", style: TextStyle(fontSize: 14),),
                   items: parentTasks.keys.toList().map((String value) {
                     return DropdownMenuItem<String>(
                       value: value,
@@ -196,6 +202,30 @@ class _TasksState extends State<Tasks> {
         ));
       }
     );
+  }
+
+  void sendDeleteRequest(BuildContext context, int taskId, String taskType) async {
+    String? token = await getToken();
+
+    final response = await http.delete(
+      Uri.parse("http://192.168.0.189:3000/api/tasks/delete"),
+      headers: {
+        'Content-Type': 'application/json',
+        'authorization': 'Bearer $token',
+      },
+      body: jsonEncode({
+        "id": taskId,
+        "task_type": taskType
+      })
+    );
+
+    if (response.statusCode == 200) {
+      if (!context.mounted) return;
+      showAlertDialog(context, "Task deleted successfully", afterwards: () => Navigator.pushReplacementNamed(context, "/tasks"));
+    } else {
+      if (!context.mounted) return;
+      print("Error: ${json.decode(response.body)}");
+    }
   }
 
   @override
@@ -278,6 +308,7 @@ class _TasksState extends State<Tasks> {
                   icon: Icon(Icons.delete),
                   color: Colors.black,
                   onPressed: () {
+                    sendDeleteRequest(context, parentIndex, "parent");
                     setState(() {
                       tasks.remove(taskName);
                     });
@@ -314,6 +345,7 @@ class _TasksState extends State<Tasks> {
                         trailing: IconButton(
                           icon: Icon(Icons.delete),
                           onPressed: () {
+                            sendDeleteRequest(context, subtaskIndex, "sub");
                             setState(() {
                               subtasks.remove(subtaskTitle);
                             });
