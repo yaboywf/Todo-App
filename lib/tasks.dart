@@ -74,6 +74,130 @@ class _TasksState extends State<Tasks> {
     }
   }
 
+  void openTask(BuildContext context, String taskName, bool completed, {String? dueDate}) {
+    showDialog(
+      context: context, 
+      builder: (BuildContext context) {
+        return AlertDialog(
+          title: Text(taskName),
+          content: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            mainAxisSize: MainAxisSize.min,
+            children: [
+              Text("Task: $taskName"),
+              dueDate == null ? Container() : Text("Due: $dueDate"),
+              Text("Completed: ${completed == true ? 'Yes' : 'No'}"),
+            ],
+          ),
+          actions: <Widget>[
+            TextButton(
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+              child: Text("Close"),
+            ),
+          ],
+        );
+      }
+    );
+  }
+
+  void createTask(Map<String, dynamic> parentTasks) {
+    String? selectedTaskType;
+    TextEditingController taskNameController = TextEditingController();
+    TextEditingController dueDateController = TextEditingController();
+
+    void sendCreateRequest(BuildContext context) async {
+      String? token = await getToken();
+
+      final response = await http.post(
+        Uri.parse("http://192.168.0.189:3000/api/tasks/create"),
+        headers: {
+          'Content-Type': 'application/json',
+          'authorization': 'Bearer $token',
+        },
+        body: jsonEncode({
+          "task_name": taskNameController.text,
+          "due_date": dueDateController.text,
+          "parent_task": selectedTaskType == null ? null : parentTasks[selectedTaskType]["id"]
+        })
+      );
+
+      if (response.statusCode == 200) {
+        if (!context.mounted) return;
+        showAlertDialog(context, "Task created successfully", afterwards: () => Navigator.pushReplacementNamed(context, "/tasks"));
+      } else {
+        print("Error: ${json.decode(response.body)}");
+      }
+    }
+
+    showDialog(
+      context: context,
+      builder: (BuildContext context) {
+        return StatefulBuilder(
+          builder: (BuildContext context, StateSetter setState) => AlertDialog(
+          title: Text("Create Task"),
+          content: Column(
+            mainAxisSize: MainAxisSize.min,
+            mainAxisAlignment: MainAxisAlignment.start,
+            children: [
+              TextField(
+                controller: taskNameController,
+                decoration: textDecor("Task Name"),
+              ),
+              SizedBox(height: 10),
+              TextField(
+                controller: dueDateController,
+                decoration: textDecor("Due Date"),
+              ),
+              SizedBox(height: 10),
+              Container(
+                padding: EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+                decoration: BoxDecoration(
+                  border: Border.all(
+                    color: Colors.black,
+                    width: 1,
+                  ),
+                  borderRadius: BorderRadius.circular(10),
+                ),
+                child: DropdownButton<String>(
+                  value: selectedTaskType,
+                  underline: Container(),
+                  hint: Text("Select Task Type", style: TextStyle(fontSize: 14),),
+                  items: parentTasks.keys.toList().map((String value) {
+                    return DropdownMenuItem<String>(
+                      value: value,
+                      child: Text(value),
+                    );
+                  }).toList(),
+                  onChanged: (String? value) {
+                    setState(() {
+                      selectedTaskType = value;
+                    });
+                  }
+                ),
+              )
+            ],
+          ),
+          actions: <Widget>[
+            TextButton(
+              child: Text("Cancel"),
+              onPressed: () {
+                Navigator.of(context).pop();
+              },
+            ),
+            TextButton(
+              child: Text("Create"),
+              onPressed: () {
+                sendCreateRequest(context);
+              }
+            )
+          ],
+        ));
+      }
+    );
+  }
+
   @override
   void initState() {
     super.initState();
@@ -106,7 +230,7 @@ class _TasksState extends State<Tasks> {
           ],
         ),
       ),
-      body: tasks.isEmpty ? Center(child: CircularProgressIndicator()) : ListView.builder(
+      body: tasks.isEmpty ? Center(child: CircularProgressIndicator(color: Colors.black,)) : ListView.builder(
         itemCount: tasks.length,
         itemBuilder: (context, index) {
           String taskName = tasks.keys.toList()[index];
@@ -117,7 +241,8 @@ class _TasksState extends State<Tasks> {
 
           return GestureDetector(
             onLongPress: () {
-              print("long press");
+              print("long press: $parentIndex");
+              openTask(context, taskName, completed, dueDate: due);
             },
             child: tasks["tasks"] == "no tasks" ? Center(child: Text("No tasks")) : Card(
               key: ValueKey("parent-$parentIndex"),
@@ -165,29 +290,35 @@ class _TasksState extends State<Tasks> {
                     int subtaskIndex = subtaskData["id"];
                     bool subtaskCompleted = subtaskData['completed'];
                     String? subtaskDue = subtaskData['due_date'];
+                    ValueKey key = ValueKey("subtask-$subtaskIndex");
             
-                    return ListTile(
-                      key: ValueKey("subtask-$subtaskIndex"),
-                      tileColor: subtaskCompleted ? Colors.green[200] : Colors.transparent,
-                      leading: Checkbox(
-                        activeColor: Colors.black,
-                        value: subtaskCompleted,
-                        onChanged: (bool? value) {
-                          setState(() {
-                            subtasks[subtaskTitle]["completed"] = value!;
-                            if (value == false) tasks[taskName]["completed"] = false;
-                          });
-                        },
-                      ),
-                      title: Text(subtaskTitle),
-                      subtitle: subtaskDue == null ? null : Text('Due: $subtaskDue'),
-                      trailing: IconButton(
-                        icon: Icon(Icons.delete),
-                        onPressed: () {
-                          setState(() {
-                            subtasks.remove(subtaskTitle);
-                          });
-                        },
+                    return GestureDetector(
+                      onLongPress: () {
+                        print("Long press on subtask: $subtaskIndex");
+                      },
+                      child: ListTile(
+                        key: key,
+                        tileColor: subtaskCompleted ? Colors.green[200] : Colors.transparent,
+                        leading: Checkbox(
+                          activeColor: Colors.black,
+                          value: subtaskCompleted,
+                          onChanged: (bool? value) {
+                            setState(() {
+                              subtasks[subtaskTitle]["completed"] = value!;
+                              if (value == false) tasks[taskName]["completed"] = false;
+                            });
+                          },
+                        ),
+                        title: Text(subtaskTitle),
+                        subtitle: subtaskDue == null ? null : Text('Due: $subtaskDue'),
+                        trailing: IconButton(
+                          icon: Icon(Icons.delete),
+                          onPressed: () {
+                            setState(() {
+                              subtasks.remove(subtaskTitle);
+                            });
+                          },
+                        ),
                       ),
                     );
                   }).toList()
@@ -202,7 +333,9 @@ class _TasksState extends State<Tasks> {
         },
       ),
       floatingActionButton: FloatingActionButton(
-        onPressed: () {},
+        onPressed: () {
+          createTask(tasks);
+        },
         shape: CircleBorder(),
         backgroundColor: Colors.white,
         child: Icon(
@@ -210,6 +343,34 @@ class _TasksState extends State<Tasks> {
           color: Colors.black,
         ),
       ),
+    );
+  }
+
+  InputDecoration textDecor(String hintText) {
+    return InputDecoration(
+      labelText: hintText,
+      labelStyle: TextStyle(
+        color: Colors.black,
+        fontSize: 14,
+      ),
+      hintStyle: TextStyle(
+        color: Colors.black,
+        fontSize: 14,
+      ),
+      hintText: "Enter $hintText",
+      border: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(10),
+        borderSide: BorderSide(color: Colors.black),
+      ),
+      enabledBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(10),
+        borderSide: BorderSide(color: Colors.black),
+      ),
+      focusedBorder: OutlineInputBorder(
+        borderRadius: BorderRadius.circular(10),
+        borderSide: BorderSide(color: Colors.black),
+      ),
+      contentPadding: EdgeInsets.symmetric(vertical: 3.0, horizontal: 10.0),
     );
   }
 }

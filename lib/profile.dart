@@ -376,14 +376,24 @@ class _ProfilePageState extends State<ProfilePage> {
               ],
             );
           } else {
-            return Padding(
+            return Container(
+              decoration: BoxDecoration(
+                image: DecorationImage(
+                  image: AssetImage("assets/profile_bg.webp"),
+                  fit: BoxFit.cover,
+                  colorFilter: ColorFilter.mode(
+                    Colors.black.withValues(alpha: 0.1),
+                    BlendMode.darken,
+                  ),
+                )
+              ),
               padding: EdgeInsets.all(20.0),
               child: Center(
                 child: Column(
                   mainAxisAlignment: MainAxisAlignment.center,
                   children: [
                     Text('No data found', style: TextStyle(
-                      fontSize: 18, 
+                      fontSize: 24, 
                       fontWeight: FontWeight.bold
                     )),
                     SizedBox(height: 20),
@@ -392,7 +402,7 @@ class _ProfilePageState extends State<ProfilePage> {
                         Navigator.pushReplacementNamed(context, "/");
                       },
                       backgroundColor: Colors.black,
-                      child: Icon(Icons.refresh),
+                      child: Icon(Icons.refresh, color: Colors.white),
                     ),
                   ],
                 ),

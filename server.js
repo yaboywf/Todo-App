@@ -153,7 +153,7 @@ app.get("/api/get_tasks", authenticateToken, async (req, res) => {
             task.task_name = decryptedTaskName;
             task.due_date = decryptedDueDate;
             task.subtasks = {};
-            task.completed = Boolean(task.completed);
+            task.completed = task.completed === 1;
 
             const subtasks = await getSubTasks(req.user.id, task);
 
@@ -164,7 +164,7 @@ app.get("/api/get_tasks", authenticateToken, async (req, res) => {
 
                     const key = subtask.task_name = decryptedSubtaskName;
                     subtask.due_date = decryptedDueDate;
-                    subtask.completed = Boolean(subtask.completed);
+                    subtask.completed = subtask.completed === 1;
 
                     delete subtask.parent_task_id;
                     delete subtask.user_id;
@@ -177,8 +177,9 @@ app.get("/api/get_tasks", authenticateToken, async (req, res) => {
             delete task.user_id;
             delete task.password;
             delete task.iv;
-            return res.json(tasks);
         }
+
+        return res.json(tasks);
     } catch (err) {
         return res.status(500).json({ error: err.message });
     }
@@ -194,8 +195,11 @@ async function getSubTasks(user, task) {
     });
 }
 
-app.post("/api/create_task", authenticateToken, async (req, res) => {
-    const { task_type, parent_task_id, task_name, due_date } = req.body;
+app.post("/api/tasks/create", authenticateToken, async (req, res) => {
+    const { parent_task, task_name, due_date } = req.body;
+    const task_type = parent_task ? "sub" : "parent";
+
+    if (!task_name) return res.status(400).json({ message: "Task name is required" });
     
     db.get('SELECT * FROM users WHERE id = ?;', [req.user.id], (err, user) => {
         if (err) return res.status(500).json({ error: err.message });
@@ -207,14 +211,14 @@ app.post("/api/create_task", authenticateToken, async (req, res) => {
         const encryptedTaskName = encrypt(task_name, encryptionKey, iv);
         const encryptedDueDate = due_date ? encrypt(due_date, encryptionKey, iv) : null;
 
-        if (task_type.tolowerCase() === "parent") {
+        if (task_type.toLowerCase() === "parent") {
             db.run('INSERT INTO parent_task (user_id, task_name, due_date, completed) VALUES (?, ?, ?, 0);', [req.user.id, encryptedTaskName, encryptedDueDate], (err) => {
                 if (err) return res.status(500).json({ error: err.message });
 
                 return res.json({ message: "Task created successfully" });
             })
-        } else if (task_type.tolowerCase() === "sub") {
-            db.run('INSERT INTO sub_task (user_id, parent_task_id, task_name, due_date) VALUES (?, ?, ?, ?, 0);', [req.user.id, parent_task_id, encryptedTaskName, encryptedDueDate], (err) => {
+        } else if (task_type.toLowerCase() === "sub") {
+            db.run('INSERT INTO sub_task (user_id, parent_task_id, task_name, due_date, completed) VALUES (?, ?, ?, ?, 0);', [req.user.id, parent_task, encryptedTaskName, encryptedDueDate], (err) => {
                 if (err) return res.status(500).json({ error: err.message });
 
                 return res.json({ message: "Task created successfully" });
