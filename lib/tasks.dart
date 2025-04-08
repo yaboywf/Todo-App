@@ -27,7 +27,7 @@ class _TasksState extends State<Tasks> {
 
     try {
       final response = await http.get(
-        Uri.parse("http://172.30.28.184:3000/api/check_session"),
+        Uri.parse("http://10.102.0.78:3000/api/check_session"),
         headers: {
           'authorization': 'Bearer $token',
         },
@@ -55,7 +55,7 @@ class _TasksState extends State<Tasks> {
 
     try {
       final response = await http.get(
-        Uri.parse("http://172.30.28.184:3000/api/get_tasks"),
+        Uri.parse("http://10.102.0.78:3000/api/get_tasks"),
         headers: {
           'Content-Type': 'application/json',
           'authorization': 'Bearer $token',
@@ -63,21 +63,28 @@ class _TasksState extends State<Tasks> {
       );
 
       if (response.statusCode == 200) {
-        List<Map<String, dynamic>> data = List<Map<String, dynamic>>.from(json.decode(response.body));
-        Map<String, dynamic> tasksMap = {
-          for (var i = 0; i < data.length; i++) data[i]["task_name"]: data[i]
-        };
-        setState(() => tasks = tasksMap);
+        if (json.decode(response.body) is Map && json.decode(response.body).containsKey("tasks")) {
+          setState(() => tasks = { "tasks": "no tasks" });
+        } else {
+          List<Map<String, dynamic>> data = List<Map<String, dynamic>>.from(json.decode(response.body));
+          Map<String, dynamic> tasksMap = {
+            for (var i = 0; i < data.length; i++) data[i]["task_name"]: data[i]
+          };
+
+          setState(() => tasks = tasksMap);
+        }
       } else {
         print("Error: ${json.decode(response.body)}");
       }
     } catch (err) {
-      print(err);
+      print("error in fetching data: $err");
     }
   }
 
-  void openTask(BuildContext context, String taskName, String taskType, int taskId, String? dueDate) {
-    TextEditingController taskNameController1 = TextEditingController(text: taskName);
+  void openTask(BuildContext context, String taskName, String taskType,
+      int taskId, String? dueDate) {
+    TextEditingController taskNameController1 =
+        TextEditingController(text: taskName);
     DateTime? dueDateController1;
     setState(() {
       dueDateController1 = dueDate != null ? DateTime.parse(dueDate) : null;
@@ -106,20 +113,21 @@ class _TasksState extends State<Tasks> {
         return;
       }
 
-      final dueDate = dueDateController1 == null ? null : dueDateController1.toString().split(" ")[0];
+      final dueDate = dueDateController1 == null
+          ? null
+          : dueDateController1.toString().split(" ")[0];
       final response = await http.put(
-        Uri.parse("http://172.30.28.184:3000/api/tasks/update/details"),
-        headers: {
-          'Content-Type': 'application/json',
-          'authorization': 'Bearer $token',
-        },
-        body: jsonEncode({
-          "id": taskId,
-          "task_type": taskType,
-          "task_name": taskNameController1.text,
-          "due_date": dueDate,
-        })
-      );
+          Uri.parse("http://10.102.0.78:3000/api/tasks/update/details"),
+          headers: {
+            'Content-Type': 'application/json',
+            'authorization': 'Bearer $token',
+          },
+          body: jsonEncode({
+            "id": taskId,
+            "task_type": taskType,
+            "task_name": taskNameController1.text,
+            "due_date": dueDate,
+          }));
 
       if (response.statusCode == 200) {
         if (!context.mounted) return;
@@ -130,54 +138,65 @@ class _TasksState extends State<Tasks> {
     }
 
     showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return StatefulBuilder(
-          builder: (BuildContext context, StateSetter setState) => AlertDialog(
-            title: Text(taskName),
-            content: Column(
-              crossAxisAlignment: CrossAxisAlignment.start,
-              mainAxisSize: MainAxisSize.min,
-              children: [
-                Text("Task Name", style: TextStyle(fontWeight: FontWeight.bold),),
-                SizedBox(height: 10),
-                TextField(
-                  controller: taskNameController1,
-                  decoration: textDecor("Task Name"),
+        context: context,
+        builder: (BuildContext context) {
+          return StatefulBuilder(
+            builder: (BuildContext context, StateSetter setState) =>
+                AlertDialog(
+              title: Text(taskName),
+              content: Column(
+                crossAxisAlignment: CrossAxisAlignment.start,
+                mainAxisSize: MainAxisSize.min,
+                children: [
+                  Text(
+                    "Task Name",
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                  SizedBox(height: 10),
+                  TextField(
+                    controller: taskNameController1,
+                    decoration: textDecor("Task Name"),
+                  ),
+                  SizedBox(height: 10),
+                  Text(
+                    "Due Date (Optional)",
+                    style: TextStyle(fontWeight: FontWeight.bold),
+                  ),
+                  SizedBox(height: 10),
+                  Text("Current Due Date: ${dueDate ?? "No Due Date"}"),
+                  SizedBox(height: 10),
+                  OutlinedButton(
+                    style: OutlinedButton.styleFrom(
+                      side: BorderSide(color: Colors.black),
+                    ),
+                    onPressed: () => selectDate(context),
+                    child: Text(
+                      "Select Due Date",
+                      style: TextStyle(color: Colors.black),
+                    ),
+                  )
+                ],
+              ),
+              actions: <Widget>[
+                TextButton(
+                  onPressed: () {
+                    setState(() => dueDateController1 = null);
+                    Navigator.of(context).pop();
+                  },
+                  child: Text("Close", style: TextStyle(color: Colors.black)),
                 ),
-                SizedBox(height: 10),
-                Text("Due Date (Optional)", style: TextStyle(fontWeight: FontWeight.bold),),
-                SizedBox(height: 10),
-                Text("Current Due Date: ${dueDate ?? "No Due Date"}"),
-                SizedBox(height: 10),
-                OutlinedButton(
-                  style: OutlinedButton.styleFrom(side: BorderSide(color: Colors.black),),
-                  onPressed: () => selectDate(context),
-                  child: Text("Select Due Date", style: TextStyle(color: Colors.black),),
-                )
+                TextButton(
+                  onPressed: () {
+                    sendUpdate(context);
+                    setState(() => dueDateController1 = null);
+                    Navigator.of(context).pop();
+                  },
+                  child: Text("Update", style: TextStyle(color: Colors.black)),
+                ),
               ],
             ),
-            actions: <Widget>[
-              TextButton(
-                onPressed: () {
-                  setState(() => dueDateController1 = null);
-                  Navigator.of(context).pop();
-                },
-                child: Text("Close", style: TextStyle(color: Colors.black)),
-              ),
-              TextButton(
-                onPressed: () {
-                  sendUpdate(context);
-                  setState(() => dueDateController1 = null);
-                  Navigator.of(context).pop();
-                },
-                child: Text("Update", style: TextStyle(color: Colors.black)),
-              ),
-            ],
-          ),
-        );
-      }
-    );
+          );
+        });
   }
 
   Future<void> selectDate(BuildContext context) async {
@@ -204,18 +223,21 @@ class _TasksState extends State<Tasks> {
         return;
       }
 
-      final response = await http.post(
-        Uri.parse("http://172.30.28.184:3000/api/tasks/create"),
-        headers: {
-          'Content-Type': 'application/json',
-          'authorization': 'Bearer $token',
-        },
-        body: jsonEncode({
-          "task_name": taskNameController.text,
-          "due_date": dueDateController == null ? null : dueDateController.toString().split(" ")[0],
-          "parent_task": selectedTaskType == null ? null : parentTasks[selectedTaskType]["id"]
-        }
-      ));
+      final response =
+          await http.post(Uri.parse("http://10.102.0.78:3000/api/tasks/create"),
+              headers: {
+                'Content-Type': 'application/json',
+                'authorization': 'Bearer $token',
+              },
+              body: jsonEncode({
+                "task_name": taskNameController.text,
+                "due_date": dueDateController == null
+                    ? null
+                    : dueDateController.toString().split(" ")[0],
+                "parent_task": selectedTaskType == null
+                    ? null
+                    : parentTasks[selectedTaskType]["id"]
+              }));
 
       if (response.statusCode == 200) {
         if (!context.mounted) return;
@@ -228,94 +250,116 @@ class _TasksState extends State<Tasks> {
     setState(() => dueDateController = null);
 
     showDialog(
-      context: context,
-      builder: (BuildContext context) {
-        return StatefulBuilder(
-          builder: (BuildContext context, StateSetter setState) => AlertDialog(
-            title: Text("Create Task"),
-            content: Column(
-              mainAxisSize: MainAxisSize.min,
-              mainAxisAlignment: MainAxisAlignment.start,
-              crossAxisAlignment: CrossAxisAlignment.start,
-              children: [
-                Text("Task Name", style: TextStyle(fontWeight: FontWeight.bold),),
-                SizedBox(height: 10),
-                TextField(
-                  controller: taskNameController,
-                  decoration: textDecor("Task Name"),
-                ),
-                SizedBox(height: 10),
-                Text("Due Date (Optional)", style: TextStyle(fontWeight: FontWeight.bold),),
-                SizedBox(height: 10),
-                OutlinedButton.icon(
-                  label: Text("Select Due Date", style: TextStyle(color: Colors.black),),
-                  style: OutlinedButton.styleFrom(side: BorderSide(color: Colors.black),),
-                  icon: Icon(
-                    Icons.calendar_month,
-                    color: Colors.black,
-                  ),
-                  onPressed: () => selectDate(context),
-                ),
-                SizedBox(height: 10),
-                Text("Parent Task (Optional)", style: TextStyle(fontWeight: FontWeight.bold),),
-                SizedBox(height: 10),
-                Container(
-                  padding: EdgeInsets.symmetric(horizontal: 10, vertical: 3),
-                  decoration: BoxDecoration(
-                    border: Border.all(
-                      color: Colors.black,
-                      width: 1,
+        context: context,
+        builder: (BuildContext context) {
+          return StatefulBuilder(
+              builder: (BuildContext context, StateSetter setState) =>
+                  AlertDialog(
+                    title: Text("Create Task"),
+                    content: Column(
+                      mainAxisSize: MainAxisSize.min,
+                      mainAxisAlignment: MainAxisAlignment.start,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Text(
+                          "Task Name",
+                          style: TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                        SizedBox(height: 10),
+                        TextField(
+                          controller: taskNameController,
+                          decoration: textDecor("Task Name"),
+                        ),
+                        SizedBox(height: 10),
+                        Text(
+                          "Due Date (Optional)",
+                          style: TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                        SizedBox(height: 10),
+                        OutlinedButton.icon(
+                          label: Text(
+                            "Select Due Date",
+                            style: TextStyle(color: Colors.black),
+                          ),
+                          style: OutlinedButton.styleFrom(
+                            side: BorderSide(color: Colors.black),
+                          ),
+                          icon: Icon(
+                            Icons.calendar_month,
+                            color: Colors.black,
+                          ),
+                          onPressed: () => selectDate(context),
+                        ),
+                        SizedBox(height: 10),
+                        Text(
+                          "Parent Task (Optional)",
+                          style: TextStyle(fontWeight: FontWeight.bold),
+                        ),
+                        SizedBox(height: 10),
+                        Container(
+                          padding:
+                              EdgeInsets.symmetric(horizontal: 10, vertical: 3),
+                          decoration: BoxDecoration(
+                            border: Border.all(
+                              color: Colors.black,
+                              width: 1,
+                            ),
+                            borderRadius: BorderRadius.circular(10),
+                          ),
+                          child: DropdownButton<String>(
+                              value: selectedTaskType,
+                              underline: Container(),
+                              hint: Text(
+                                "Parent Task",
+                                style: TextStyle(fontSize: 14),
+                              ),
+                              items:
+                                  parentTasks.keys.toList().map((String value) {
+                                return DropdownMenuItem<String>(
+                                  value: value,
+                                  child: Text(value),
+                                );
+                              }).toList(),
+                              onChanged: (String? value) {
+                                setState(() => selectedTaskType = value);
+                              }),
+                        )
+                      ],
                     ),
-                    borderRadius: BorderRadius.circular(10),
-                  ),
-                  child: DropdownButton<String>(
-                    value: selectedTaskType,
-                    underline: Container(),
-                    hint: Text("Parent Task", style: TextStyle(fontSize: 14),),
-                    items: parentTasks.keys.toList().map((String value) {
-                      return DropdownMenuItem<String>(
-                        value: value,
-                        child: Text(value),
-                      );
-                    }).toList(),
-                    onChanged: (String? value) {
-                      setState(() => selectedTaskType = value);
-                    }
-                  ),
-                )
-              ],
-            ),
-            actions: <Widget>[
-              TextButton(
-                child: Text("Cancel", style: TextStyle(color: Colors.black),),
-                onPressed: () => Navigator.of(context).pop(),
-              ),
-              TextButton(
-                child: Text("Create", style: TextStyle(color: Colors.black),),
-                onPressed: () => sendCreateRequest(context)
-              )
-            ],
-          )
-        );
-      }
-    );
+                    actions: <Widget>[
+                      TextButton(
+                        child: Text(
+                          "Cancel",
+                          style: TextStyle(color: Colors.black),
+                        ),
+                        onPressed: () => Navigator.of(context).pop(),
+                      ),
+                      TextButton(
+                          child: Text(
+                            "Create",
+                            style: TextStyle(color: Colors.black),
+                          ),
+                          onPressed: () => sendCreateRequest(context))
+                    ],
+                  ));
+        });
   }
 
-  void setStatus(BuildContext context, int taskId, String taskType, {bool? completed}) async {
+  void setStatus(BuildContext context, int taskId, String taskType,
+      {bool? completed}) async {
     String? token = await getToken();
 
     final response = await http.put(
-      Uri.parse("http://172.30.28.184:3000/api/tasks/update/completed"),
-      headers: {
-        'Content-Type': 'application/json',
-        'authorization': 'Bearer $token',
-      },
-      body: jsonEncode({
-        "id": taskId,
-        "task_type": taskType,
-        if (taskType == "parent" && completed == true) "special": true
-      })
-    );
+        Uri.parse("http://10.102.0.78:3000/api/tasks/update/completed"),
+        headers: {
+          'Content-Type': 'application/json',
+          'authorization': 'Bearer $token',
+        },
+        body: jsonEncode({
+          "id": taskId,
+          "task_type": taskType,
+          if (taskType == "parent" && completed == true) "special": true
+        }));
 
     if (response.statusCode != 200) {
       if (!context.mounted) return;
@@ -323,17 +367,17 @@ class _TasksState extends State<Tasks> {
     }
   }
 
-  void sendDeleteRequest(BuildContext context, int taskId, String taskType) async {
+  void sendDeleteRequest(
+      BuildContext context, int taskId, String taskType) async {
     String? token = await getToken();
 
-    final response = await http.delete(
-      Uri.parse("http://172.30.28.184:3000/api/tasks/delete"),
-      headers: {
-        'Content-Type': 'application/json',
-        'authorization': 'Bearer $token',
-      },
-      body: jsonEncode({"id": taskId, "task_type": taskType})
-    );
+    final response =
+        await http.delete(Uri.parse("http://10.102.0.78:3000/api/tasks/delete"),
+            headers: {
+              'Content-Type': 'application/json',
+              'authorization': 'Bearer $token',
+            },
+            body: jsonEncode({"id": taskId, "task_type": taskType}));
 
     if (response.statusCode == 200) {
       if (!context.mounted) return;
@@ -361,12 +405,16 @@ class _TasksState extends State<Tasks> {
           children: [
             Image(image: AssetImage("assets/logo.png"), height: 50),
             SizedBox(width: 10),
-            Text("To-Do App", style: TextStyle(fontWeight: FontWeight.bold),),
+            Text(
+              "To-Do App",
+              style: TextStyle(fontWeight: FontWeight.bold),
+            ),
             Expanded(
               child: Align(
                 alignment: Alignment.centerRight,
                 child: IconButton(
-                  onPressed: () => Navigator.pushReplacementNamed(context, "/profile"),
+                  onPressed: () =>
+                      Navigator.pushReplacementNamed(context, "/profile"),
                   icon: Icon(Icons.account_circle),
                 ),
               ),
@@ -374,112 +422,156 @@ class _TasksState extends State<Tasks> {
           ],
         ),
       ),
-      body: tasks.isEmpty ? Center(
-        child: CircularProgressIndicator(
-          color: Colors.black,
-        )
-      )
-      : ListView.builder(
-          itemCount: tasks.length,
-          itemBuilder: (context, index) {
-            String taskName = tasks.keys.toList()[index];
-            bool completed = tasks.values.toList()[index]["completed"];
-            String? due = tasks.values.toList()[index]["due_date"];
-            int parentIndex = tasks.values.toList()[index]["id"];
-            Map<dynamic, dynamic> subtasks = tasks.values.toList()[index]["subtasks"];
-
-            return GestureDetector(
-              onLongPress: () => openTask(context, taskName, "parent", parentIndex, due),
-              child: tasks["tasks"] == "no tasks"
-                ? Center(child: Text("No tasks"))
-                : Card(
-                  key: ValueKey("parent-$parentIndex"),
-                  color: completed && (subtasks.isEmpty || subtasks.values.every((element) => element["completed"]))
-                    ? Colors.green[200]
-                    : Colors.transparent,
-                  margin: EdgeInsets.all(10),
-                  elevation: 0,
-                  shape: RoundedRectangleBorder(
-                    borderRadius: BorderRadius.circular(10),
-                    side: BorderSide(color: Colors.black),
-                  ),
-                  child: ExpansionTile(
-                    shape: RoundedRectangleBorder(
-                      borderRadius: BorderRadius.circular(10),
-                      side: BorderSide(color: Colors.black),
-                    ),
-                    leading: Checkbox(
-                      activeColor: Colors.black,
-                      value: completed,
-                      onChanged: (bool? value) {
-                        setStatus(context, parentIndex, "parent", completed: value);
-                        setState(() {
-                          tasks[taskName]["completed"] = value!;
-                          if (value == true) {
-                            tasks[taskName]["subtasks"].forEach((key, value) {
-                              tasks[taskName]["subtasks"][key]["completed"] = tasks[taskName]["completed"];
-                            });
-                          }
-                        });
-                      },
-                    ),
-                    title: Text(taskName, style: TextStyle(fontWeight: FontWeight.bold)),
-                    subtitle: due != null ? Text("Due: $due") : null,
-                    trailing: IconButton(
-                      icon: Icon(Icons.delete),
-                      color: Colors.black,
-                      onPressed: () {
-                        sendDeleteRequest(context, parentIndex, "parent");
-                        setState(() => tasks.remove(taskName));
-                      },
-                    ),
-                    children: subtasks.isNotEmpty 
-                      ? subtasks.entries.map<Widget>((entry) {
-                        String subtaskTitle = entry.key;
-                        var subtaskData = entry.value;
-                        int subtaskIndex = subtaskData["id"];
-                        bool subtaskCompleted = subtaskData['completed'];
-                        String? subtaskDue = subtaskData['due_date'];
-                        ValueKey key = ValueKey("subtask-$subtaskIndex");
-
-                        return GestureDetector(
-                          onLongPress: () => openTask(context, subtaskTitle, "sub", subtaskIndex, subtaskDue),
-                          child: ListTile(
-                            key: key,
-                            tileColor: subtaskCompleted ? Colors.green[200] : Colors.transparent,
-                            leading: Checkbox(
-                              activeColor: Colors.black,
-                              value: subtaskCompleted,
-                              onChanged: (bool? value) {
-                                setStatus(context, subtaskIndex, "sub");
-                                setState(() => subtasks[subtaskTitle]["completed"] = value!);
-                              },
-                            ),
-                            title: Text(subtaskTitle),
-                            subtitle: subtaskDue == null ? null : Text('Due: $subtaskDue'),
-                            trailing: IconButton(
-                              icon: Icon(Icons.delete),
-                              onPressed: () {
-                                sendDeleteRequest(context, subtaskIndex, "sub");
-                                setState(() => subtasks.remove(subtaskTitle));
-                              },
-                            ),
-                          ),
-                        );
-                      }).toList()
-                    : [
-                        ListTile(title: Text("All subtasks completed!"),)
-                    ]
-                  ),
-                ),
+      body: Builder(
+        builder: (context) {
+          if (tasks.isEmpty) {
+            return Center(
+              child: CircularProgressIndicator(
+                color: Colors.black,
+              )
             );
-          },
+          } else if (tasks["tasks"] == "no tasks") {
+            return Center(
+              child: Text("No tasks")
+            );
+          } else {
+            return ListView.builder(
+                itemCount: tasks.length,
+                itemBuilder: (context, index) {
+                  String taskName = tasks.keys.toList()[index];
+                  bool completed = tasks.values.toList()[index]["completed"];
+                  String? due = tasks.values.toList()[index]["due_date"];
+                  int parentIndex = tasks.values.toList()[index]["id"];
+                  Map<dynamic, dynamic> subtasks =
+                      tasks.values.toList()[index]["subtasks"];
+        
+                  return GestureDetector(
+                    onLongPress: () =>
+                        openTask(context, taskName, "parent", parentIndex, due),
+                    child: tasks["tasks"] == "no tasks"
+                        ? Center(child: Text("No tasks"))
+                        : Card(
+                            key: ValueKey("parent-$parentIndex"),
+                            color: completed &&
+                                    (subtasks.isEmpty ||
+                                        subtasks.values.every(
+                                            (element) => element["completed"]))
+                                ? Colors.green[200]
+                                : Colors.transparent,
+                            margin: EdgeInsets.all(10),
+                            elevation: 0,
+                            shape: RoundedRectangleBorder(
+                              borderRadius: BorderRadius.circular(10),
+                              side: BorderSide(color: Colors.black),
+                            ),
+                            child: ExpansionTile(
+                                shape: RoundedRectangleBorder(
+                                  borderRadius: BorderRadius.circular(10),
+                                  side: BorderSide(color: Colors.black),
+                                ),
+                                leading: Checkbox(
+                                  activeColor: Colors.black,
+                                  value: completed,
+                                  onChanged: (bool? value) {
+                                    setStatus(context, parentIndex, "parent",
+                                        completed: value);
+                                    setState(() {
+                                      tasks[taskName]["completed"] = value!;
+                                      if (value == true) {
+                                        tasks[taskName]["subtasks"]
+                                            .forEach((key, value) {
+                                          tasks[taskName]["subtasks"][key]
+                                                  ["completed"] =
+                                              tasks[taskName]["completed"];
+                                        });
+                                      }
+                                    });
+                                  },
+                                ),
+                                title: Text(taskName,
+                                    style:
+                                        TextStyle(fontWeight: FontWeight.bold)),
+                                subtitle: due != null ? Text("Due: $due") : null,
+                                trailing: IconButton(
+                                  icon: Icon(Icons.delete),
+                                  color: Colors.black,
+                                  onPressed: () {
+                                    sendDeleteRequest(
+                                        context, parentIndex, "parent");
+                                    setState(() => tasks.remove(taskName));
+                                  },
+                                ),
+                                children: subtasks.isNotEmpty
+                                    ? subtasks.entries.map<Widget>((entry) {
+                                        String subtaskTitle = entry.key;
+                                        var subtaskData = entry.value;
+                                        int subtaskIndex = subtaskData["id"];
+                                        bool subtaskCompleted =
+                                            subtaskData['completed'];
+                                        String? subtaskDue =
+                                            subtaskData['due_date'];
+                                        ValueKey key =
+                                            ValueKey("subtask-$subtaskIndex");
+        
+                                        return GestureDetector(
+                                          onLongPress: () => openTask(
+                                              context,
+                                              subtaskTitle,
+                                              "sub",
+                                              subtaskIndex,
+                                              subtaskDue),
+                                          child: ListTile(
+                                            key: key,
+                                            tileColor: subtaskCompleted
+                                                ? Colors.green[200]
+                                                : Colors.transparent,
+                                            leading: Checkbox(
+                                              activeColor: Colors.black,
+                                              value: subtaskCompleted,
+                                              onChanged: (bool? value) {
+                                                setStatus(
+                                                    context, subtaskIndex, "sub");
+                                                setState(() =>
+                                                    subtasks[subtaskTitle]
+                                                        ["completed"] = value!);
+                                              },
+                                            ),
+                                            title: Text(subtaskTitle),
+                                            subtitle: subtaskDue == null
+                                                ? null
+                                                : Text('Due: $subtaskDue'),
+                                            trailing: IconButton(
+                                              icon: Icon(Icons.delete),
+                                              onPressed: () {
+                                                sendDeleteRequest(
+                                                    context, subtaskIndex, "sub");
+                                                setState(() => subtasks
+                                                    .remove(subtaskTitle));
+                                              },
+                                            ),
+                                          ),
+                                        );
+                                      }).toList()
+                                    : [
+                                        ListTile(
+                                          title: Text("All subtasks completed!"),
+                                        )
+                                      ]),
+                          ),
+                  );
+                },
+            );
+          }
+        }
       ),
       floatingActionButton: FloatingActionButton(
         onPressed: () => createTask(tasks),
         shape: CircleBorder(),
         backgroundColor: Colors.white,
-        child: Icon(Icons.add, color: Colors.black,),
+        child: Icon(
+          Icons.add,
+          color: Colors.black,
+        ),
       ),
     );
   }

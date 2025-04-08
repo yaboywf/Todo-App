@@ -18,7 +18,7 @@ class _LoginState extends State<Login> {
   final password = TextEditingController();
 
   Future<Map<String, dynamic>> sendAuthentication() async {
-    final url = "http://172.30.28.184:3000/api/authenticate";
+    final url = "http://10.102.0.78:3000/api/authenticate";
     final data = {"username": username.text, "password": password.text};
 
     if (username.text.isEmpty || password.text.isEmpty) {
@@ -69,18 +69,17 @@ class _LoginState extends State<Login> {
       ),
       body: Container(
         decoration: BoxDecoration(
-          image: DecorationImage(image: AssetImage("assets/login_bg.jpg"), fit: BoxFit.cover)
-        ),
+            image: DecorationImage(
+                image: AssetImage("assets/login_bg.jpg"), fit: BoxFit.cover)),
         child: Padding(
           padding: EdgeInsets.fromLTRB(20.0, 0, 20.0, 130.0),
           child: Column(
             mainAxisAlignment: MainAxisAlignment.center,
             crossAxisAlignment: CrossAxisAlignment.start,
             children: [
-              Text("Username:", style: TextStyle(
-                fontSize: 16.0,
-                fontWeight: FontWeight.bold
-              )),
+              Text("Username:",
+                  style:
+                      TextStyle(fontSize: 16.0, fontWeight: FontWeight.bold)),
               SizedBox(height: 10),
               TextField(
                   cursorColor: Colors.black,

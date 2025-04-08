@@ -13,16 +13,10 @@ require('dotenv').config();
 
 const app = express();
 const db = new sqlite3.Database('database.db', (err) => {
-    if (err) {
-        console.error(err.message);
-    }
+    if (err) console.error(err.message);
 
     db.run("PRAGMA foreign_keys = ON;", (err) => {
-        if (err) {
-            console.error('Could not enable foreign key support', err);
-        } else {
-            console.log('Foreign key support enabled');
-        }
+        if (err) console.error('Could not enable foreign key support', err);
     });
 });
 
@@ -292,7 +286,6 @@ app.put("/api/tasks/update/completed", authenticateToken, async (req, res) => {
 
 app.put("/api/tasks/update/details", authenticateToken, (req, res) => {
     const { id, task_type, task_name, due_date } = req.body;
-    console.log(req.body);
 
     if (!id) return res.status(400).json({ message: "Task ID is required" });
     if (!task_type) return res.status(400).json({ message: "Task type is required" });
@@ -342,7 +335,15 @@ app.post("/api/create_account", async (req, res) => {
     })
 })
 
-app.listen(3000, "172.30.28.184", (error) => {
+app.delete("/api/delete_account", authenticateToken, (req, res) => {
+    db.run("DELETE FROM users WHERE id = ?;", [req.user.id], (err) => {
+        if (err) res.status(500).json({ error: err.message });
+            
+        return res.json({ message: "Account deleted successfully" });
+    })
+})
+
+app.listen(3000, "10.102.0.78", (error) => {
     if (error) {
         console.error(error);
         return;

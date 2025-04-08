@@ -20,7 +20,7 @@ class _CreateAccountState extends State<CreateAccount> {
     if (username.text.isEmpty || password.text.isEmpty) return;
 
     final response = await http.post(
-        Uri.parse("http://172.30.28.184:3000/api/create_account"),
+        Uri.parse("http://10.102.0.78:3000/api/create_account"),
         headers: {"Content-Type": "application/json"},
         body: json
             .encode({"username": username.text, "password": password.text}));
