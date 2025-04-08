@@ -69,8 +69,8 @@ class _LoginState extends State<Login> {
       ),
       body: Container(
         decoration: BoxDecoration(
-            image: DecorationImage(
-                image: AssetImage("assets/login_bg.jpg"), fit: BoxFit.cover)),
+          image: DecorationImage(image: AssetImage("assets/login_bg.jpg"), fit: BoxFit.cover)
+        ),
         child: Padding(
           padding: EdgeInsets.fromLTRB(20.0, 0, 20.0, 130.0),
           child: Column(
