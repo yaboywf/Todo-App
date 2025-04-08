@@ -330,25 +330,6 @@ class _ProfilePageState extends State<ProfilePage> {
                         decoration: textDecor("Username"),
                       ),
                       SizedBox(height: 20),
-                      Text("Change Password:", style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 17,
-                      ),),
-                      SizedBox(height: 10),
-                      Text("New Password:"),
-                      SizedBox(height: 10),
-                      TextField(
-                        cursorColor: Colors.black,
-                        decoration: textDecor("New Password"),
-                      ),
-                      SizedBox(height: 10),
-                      Text("Confirm Password:"),
-                      SizedBox(height: 10),
-                      TextField(
-                        cursorColor: Colors.black,
-                        decoration: textDecor("Confirm Password"),
-                      ),
-                      SizedBox(height: 20),
                       Column(
                         children: [
                           Row(
