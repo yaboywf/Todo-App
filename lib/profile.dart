@@ -22,7 +22,7 @@ class _ProfilePageState extends State<ProfilePage> {
   File? image;
   final ImagePicker picker = ImagePicker();
   late bool imagePicked = false;
-  String currentUsername = ""; 
+  String currentUsername = "";
 
   Future<void> validateSession(BuildContext context) async {
     String? token = await getToken();
@@ -34,7 +34,7 @@ class _ProfilePageState extends State<ProfilePage> {
 
     try {
       final response = await http.get(
-        Uri.parse("http://192.168.0.189:3000/api/check_session"),
+        Uri.parse("http://172.30.28.184:3000/api/check_session"),
         headers: {
           'authorization': 'Bearer $token',
         },
@@ -52,10 +52,9 @@ class _ProfilePageState extends State<ProfilePage> {
       } else {
         if (!context.mounted) return;
         setState(() {
-          user = getUserData(context); 
+          user = getUserData(context);
         });
       }
-
     } catch (err) {
       print(err);
       if (!context.mounted) return;
@@ -68,12 +67,12 @@ class _ProfilePageState extends State<ProfilePage> {
 
     try {
       final response = await http.get(
-        Uri.parse("http://192.168.0.189:3000/api/get_user_data"),
+        Uri.parse("http://172.30.28.184:3000/api/get_user_data"),
         headers: {
           'authorization': 'Bearer $token',
         },
       );
-      
+
       if (response.statusCode != 200) {
         if (!context.mounted) return {};
         showAlertDialog(context, "Unable to get user data");
@@ -92,11 +91,8 @@ class _ProfilePageState extends State<ProfilePage> {
   Future<void> logout(BuildContext context) async {
     String? token = await getToken();
     final response = await http.post(
-      Uri.parse("http://192.168.0.189:3000/api/logout"),
-      headers: {
-        'authorization': 'Bearer $token'
-      }
-    );
+        Uri.parse("http://172.30.28.184:3000/api/logout"),
+        headers: {'authorization': 'Bearer $token'});
 
     if (response.statusCode == 200) {
       SharedPreferences prefs = await SharedPreferences.getInstance();
@@ -123,17 +119,18 @@ class _ProfilePageState extends State<ProfilePage> {
     if (newUsername == currentUsername) return;
 
     final response = await http.put(
-      Uri.parse("http://192.168.0.189:3000/api/update_user_data/username"),
-      headers: {
-        'Content-Type': 'application/json',
-        'authorization': 'Bearer $token'
-      },
-      body: json.encode({"username": newUsername})
-    );
+        Uri.parse("http://172.30.28.184:3000/api/update_user_data/username"),
+        headers: {
+          'Content-Type': 'application/json',
+          'authorization': 'Bearer $token'
+        },
+        body: json.encode({"username": newUsername}));
 
     if (response.statusCode == 200) {
       if (!context.mounted) return;
-      showAlertDialog(context, "Username updated successfully", afterwards: () => Navigator.pushReplacementNamed(context, "/profile"));      
+      showAlertDialog(context, "Username updated successfully",
+          afterwards: () =>
+              Navigator.pushReplacementNamed(context, "/profile"));
     } else if (response.statusCode == 403) {
       if (!context.mounted) return;
       Navigator.pushReplacementNamed(context, "/");
@@ -171,7 +168,7 @@ class _ProfilePageState extends State<ProfilePage> {
       "image": base64Image,
     });
 
-    var uri = Uri.parse("http://192.168.0.189:3000/api/update_user_data/image");
+    var uri = Uri.parse("http://172.30.28.184:3000/api/update_user_data/image");
     var request = http.Request('PUT', uri);
     request.headers['Content-Type'] = 'application/json';
     request.headers['authorization'] = 'Bearer $token';
@@ -180,7 +177,9 @@ class _ProfilePageState extends State<ProfilePage> {
 
     if (response.statusCode == 200) {
       if (!context.mounted) return;
-      showAlertDialog(context, "User Profile Image updated successfully", afterwards: () => Navigator.pushReplacementNamed(context, "/profile"));      
+      showAlertDialog(context, "User Profile Image updated successfully",
+          afterwards: () =>
+              Navigator.pushReplacementNamed(context, "/profile"));
     } else if (response.statusCode == 403) {
       if (!context.mounted) return;
       Navigator.pushReplacementNamed(context, "/");
@@ -200,213 +199,233 @@ class _ProfilePageState extends State<ProfilePage> {
   @override
   Widget build(BuildContext context) {
     return Scaffold(
-      resizeToAvoidBottomInset: false,
-      appBar: AppBar(
-        backgroundColor: Colors.grey,
-        automaticallyImplyLeading: false,
-        title: Row(
-          children: [
-            Image(image: AssetImage("assets/logo.png"), height: 50),
-            SizedBox(width: 10),
-            Text("To-Do App", style: TextStyle(fontWeight: FontWeight.bold),),
-            Expanded(
-              child: Align(
-                alignment: Alignment.centerRight,
-                child: IconButton(
-                  onPressed: () {
-                    Navigator.pushReplacementNamed(context, "/profile");
-                  },
-                  icon: Icon(Icons.account_circle),
-                ),
+        resizeToAvoidBottomInset: false,
+        appBar: AppBar(
+          backgroundColor: Colors.grey,
+          automaticallyImplyLeading: false,
+          title: Row(
+            children: [
+              Image(image: AssetImage("assets/logo.png"), height: 50),
+              SizedBox(width: 10),
+              Text(
+                "To-Do App",
+                style: TextStyle(fontWeight: FontWeight.bold),
               ),
-            )
-          ],
-        ),
-      ),
-      body: FutureBuilder<Map<String, dynamic>>(
-        future: user,
-        builder: (context, snapshot) {
-          if (snapshot.connectionState == ConnectionState.waiting) {
-            return Center(
-              child: Column(
-                mainAxisAlignment: MainAxisAlignment.center,
-                crossAxisAlignment: CrossAxisAlignment.center,
-                children: [
-                  CircularProgressIndicator(color: Colors.black,),
-                  SizedBox(height: 10),
-                  Text('Loading...'),
-                ],
-              ),
-            );
-          } else if (snapshot.hasError) {
-            return Center(child: Text('Error: ${snapshot.error}'));
-          } else if (snapshot.hasData) {
-            var userData = snapshot.data!;
-            var base64Image = userData['user_image'];
-            var username = userData['username'];
-
-            currentUsername = username;
-            Uint8List decodedImage = base64Decode(base64Image);
-            usernameController = TextEditingController(text: username);
-            
-            return Stack(
-              children: [
-                Container(
-                  decoration: BoxDecoration(
-                    image: DecorationImage(
-                      image: AssetImage("assets/profile_bg.webp"),
-                      fit: BoxFit.cover,
-                      colorFilter: ColorFilter.mode(
-                        Colors.black.withValues(alpha: 0.1),
-                        BlendMode.darken,
-                      ),
-                    ),
+              Expanded(
+                child: Align(
+                  alignment: Alignment.centerRight,
+                  child: IconButton(
+                    onPressed: () {
+                      Navigator.pushReplacementNamed(context, "/profile");
+                    },
+                    icon: Icon(Icons.account_circle),
                   ),
-                  padding: EdgeInsets.all(20),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.start,
-                    crossAxisAlignment: CrossAxisAlignment.start,
-                    children: [
-                      Center(
-                        child: CircleAvatar(
-                          radius: 50,
-                          backgroundImage: image != null ? FileImage(image!) : MemoryImage(decodedImage),
+                ),
+              )
+            ],
+          ),
+        ),
+        body: FutureBuilder<Map<String, dynamic>>(
+          future: user,
+          builder: (context, snapshot) {
+            if (snapshot.connectionState == ConnectionState.waiting) {
+              return Center(
+                child: Column(
+                  mainAxisAlignment: MainAxisAlignment.center,
+                  crossAxisAlignment: CrossAxisAlignment.center,
+                  children: [
+                    CircularProgressIndicator(
+                      color: Colors.black,
+                    ),
+                    SizedBox(height: 10),
+                    Text('Loading...'),
+                  ],
+                ),
+              );
+            } else if (snapshot.hasError) {
+              return Center(child: Text('Error: ${snapshot.error}'));
+            } else if (snapshot.hasData) {
+              var userData = snapshot.data!;
+              var base64Image = userData['user_image'];
+              var username = userData['username'];
+
+              currentUsername = username;
+              Uint8List decodedImage = base64Decode(base64Image);
+              usernameController = TextEditingController(text: username);
+
+              return Stack(
+                children: [
+                  Container(
+                    decoration: BoxDecoration(
+                      image: DecorationImage(
+                        image: AssetImage("assets/profile_bg.webp"),
+                        fit: BoxFit.cover,
+                        colorFilter: ColorFilter.mode(
+                          Colors.black.withValues(alpha: 0.1),
+                          BlendMode.darken,
                         ),
                       ),
-                      SizedBox(height: 20),
-                      Text("Username:", style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 17,
-                      ),),
-                      SizedBox(height: 10),
-                      TextField(
-                        controller: usernameController,
-                        cursorColor: Colors.black,
-                        decoration: textDecor("Username"),
-                      ),
-                      SizedBox(height: 20),
-                      Text("Change Password:", style: TextStyle(
-                        fontWeight: FontWeight.bold,
-                        fontSize: 17,
-                      ),),
-                      SizedBox(height: 10),
-                      Text("New Password:"),
-                      SizedBox(height: 10),
-                      TextField(
-                        cursorColor: Colors.black,
-                        decoration: textDecor("New Password"),
-                      ),
-                      SizedBox(height: 10),
-                      Text("Confirm Password:"),
-                      SizedBox(height: 10),
-                      TextField(
-                        cursorColor: Colors.black,
-                        decoration: textDecor("Confirm Password"),
-                      ),
-                      SizedBox(height: 20),
-                      Row(
-                        mainAxisAlignment: MainAxisAlignment.center,
-                        children: [
-                          OutlinedButton.icon(
-                            onPressed: () {
-                              updateUsername(context);
-                              if (imagePicked) updateImage(context);
-                            },
-                            label: Text("Save", style: TextStyle(
-                              color: Colors.black
-                            ),),
-                            icon: Icon(Icons.save),
-                            style: ButtonStyle(
-                              iconColor: WidgetStatePropertyAll(Colors.black),
-                              padding: WidgetStatePropertyAll(EdgeInsets.symmetric(horizontal: 10, vertical: 3)),
-                              side: WidgetStatePropertyAll(BorderSide(color: Colors.black)),
-                            ),
-                          ),
-                          SizedBox(width: 10),
-                          OutlinedButton.icon(
-                            onPressed: () {
-                              logout(context);
-                            },
-                            label: Text("Logout", style: TextStyle(
-                              color: Colors.black
-                            ),),
-                            icon: Icon(Icons.lock),
-                            style: ButtonStyle(
-                              iconColor: WidgetStatePropertyAll(Colors.black),
-                              padding: WidgetStatePropertyAll(EdgeInsets.symmetric(horizontal: 10, vertical: 3)),
-                              side: WidgetStatePropertyAll(BorderSide(color: Colors.black)),
-                            ),
-                          )
-                        ]
-                      )
-                    ],
-                  ),
-                ),
-                Positioned(
-                  right: 140,
-                  top: 85,
-                  child: ElevatedButton(
-                    style: ButtonStyle(
-                      iconColor: WidgetStatePropertyAll(Colors.black),
-                      shape: WidgetStatePropertyAll(CircleBorder()),
-                      backgroundColor: WidgetStatePropertyAll(Colors.white),
-                      side: WidgetStatePropertyAll(BorderSide(color: Colors.black)),
                     ),
-                    onPressed: () {
-                      pickImage();
-                    },
-                    child: Icon(Icons.edit),
+                    padding: EdgeInsets.all(20),
+                    child: Column(
+                      mainAxisAlignment: MainAxisAlignment.start,
+                      crossAxisAlignment: CrossAxisAlignment.start,
+                      children: [
+                        Center(
+                          child: CircleAvatar(
+                            radius: 50,
+                            backgroundColor: Colors.white,
+                            backgroundImage: image != null
+                                ? FileImage(image!)
+                                : MemoryImage(decodedImage),
+                          ),
+                        ),
+                        SizedBox(height: 20),
+                        Text(
+                          "Username:",
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 17,
+                          ),
+                        ),
+                        SizedBox(height: 10),
+                        TextField(
+                          controller: usernameController,
+                          cursorColor: Colors.black,
+                          decoration: textDecor("Username"),
+                        ),
+                        SizedBox(height: 20),
+                        Text(
+                          "Change Password:",
+                          style: TextStyle(
+                            fontWeight: FontWeight.bold,
+                            fontSize: 17,
+                          ),
+                        ),
+                        SizedBox(height: 10),
+                        Text("New Password:"),
+                        SizedBox(height: 10),
+                        TextField(
+                          cursorColor: Colors.black,
+                          decoration: textDecor("New Password"),
+                        ),
+                        SizedBox(height: 10),
+                        Text("Confirm Password:"),
+                        SizedBox(height: 10),
+                        TextField(
+                          cursorColor: Colors.black,
+                          decoration: textDecor("Confirm Password"),
+                        ),
+                        SizedBox(height: 20),
+                        Row(
+                            mainAxisAlignment: MainAxisAlignment.center,
+                            children: [
+                              OutlinedButton.icon(
+                                onPressed: () {
+                                  updateUsername(context);
+                                  if (imagePicked) updateImage(context);
+                                },
+                                label: Text(
+                                  "Save",
+                                  style: TextStyle(color: Colors.black),
+                                ),
+                                icon: Icon(Icons.save),
+                                style: ButtonStyle(
+                                  iconColor:
+                                      WidgetStatePropertyAll(Colors.black),
+                                  padding: WidgetStatePropertyAll(
+                                      EdgeInsets.symmetric(
+                                          horizontal: 10, vertical: 3)),
+                                  side: WidgetStatePropertyAll(
+                                      BorderSide(color: Colors.black)),
+                                ),
+                              ),
+                              SizedBox(width: 10),
+                              OutlinedButton.icon(
+                                onPressed: () {
+                                  logout(context);
+                                },
+                                label: Text(
+                                  "Logout",
+                                  style: TextStyle(color: Colors.black),
+                                ),
+                                icon: Icon(Icons.lock),
+                                style: ButtonStyle(
+                                  iconColor:
+                                      WidgetStatePropertyAll(Colors.black),
+                                  padding: WidgetStatePropertyAll(
+                                      EdgeInsets.symmetric(
+                                          horizontal: 10, vertical: 3)),
+                                  side: WidgetStatePropertyAll(
+                                      BorderSide(color: Colors.black)),
+                                ),
+                              )
+                            ])
+                      ],
+                    ),
                   ),
-                ),
-              ],
-            );
-          } else {
-            return Container(
-              decoration: BoxDecoration(
-                image: DecorationImage(
+                  Positioned(
+                    right: 140,
+                    top: 85,
+                    child: ElevatedButton(
+                      style: ButtonStyle(
+                        iconColor: WidgetStatePropertyAll(Colors.black),
+                        shape: WidgetStatePropertyAll(CircleBorder()),
+                        backgroundColor: WidgetStatePropertyAll(Colors.white),
+                        side: WidgetStatePropertyAll(
+                            BorderSide(color: Colors.black)),
+                      ),
+                      onPressed: () {
+                        pickImage();
+                      },
+                      child: Icon(Icons.edit),
+                    ),
+                  ),
+                ],
+              );
+            } else {
+              return Container(
+                decoration: BoxDecoration(
+                    image: DecorationImage(
                   image: AssetImage("assets/profile_bg.webp"),
                   fit: BoxFit.cover,
                   colorFilter: ColorFilter.mode(
                     Colors.black.withValues(alpha: 0.1),
                     BlendMode.darken,
                   ),
-                )
-              ),
-              padding: EdgeInsets.all(20.0),
-              child: Center(
-                child: Column(
-                  mainAxisAlignment: MainAxisAlignment.center,
-                  children: [
-                    Text('No data found', style: TextStyle(
-                      fontSize: 24, 
-                      fontWeight: FontWeight.bold
-                    )),
-                    SizedBox(height: 20),
-                    OutlinedButton(
-                      onPressed: () {
-                        Navigator.pushReplacementNamed(context, "/");
-                      },
-                      child: Icon(Icons.refresh)
-                    ),
-                  ],
+                )),
+                padding: EdgeInsets.all(20.0),
+                child: Center(
+                  child: Column(
+                    mainAxisAlignment: MainAxisAlignment.center,
+                    children: [
+                      Text('No data found',
+                          style: TextStyle(
+                              fontSize: 24, fontWeight: FontWeight.bold)),
+                      SizedBox(height: 20),
+                      OutlinedButton(
+                          onPressed: () {
+                            Navigator.pushReplacementNamed(context, "/");
+                          },
+                          child: Icon(Icons.refresh)),
+                    ],
+                  ),
                 ),
-              ),
-            );
-          }
-        },
-      ),
-      floatingActionButton: FloatingActionButton(
-        onPressed: () {
-            Navigator.pushReplacementNamed(context, "/tasks");
-        },    
-        shape: CircleBorder(),
-        backgroundColor: Colors.white,
-        child: Icon(
-          Icons.home,
-          color: Colors.black,
+              );
+            }
+          },
         ),
-      )
-    );
+        floatingActionButton: FloatingActionButton(
+          onPressed: () {
+            Navigator.pushReplacementNamed(context, "/tasks");
+          },
+          shape: CircleBorder(),
+          backgroundColor: Colors.white,
+          child: Icon(
+            Icons.home,
+            color: Colors.black,
+          ),
+        ));
   }
 
   InputDecoration textDecor(String hintText) {

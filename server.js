@@ -71,7 +71,7 @@ const authenticateToken = (req, res, next) => {
     let token = req.headers.authorization;
     if (!token) return res.status(401).json({ message: "Unauthorized" });
     token = token.split(" ")[1];
-    
+
     jwt.verify(token, process.env.SECRET_KEY, (err, decoded) => {
         if (err) return res.status(403).json({ message: "Unauthorized" });
         req.user = decoded;
@@ -81,7 +81,7 @@ const authenticateToken = (req, res, next) => {
 
 app.post('/api/authenticate', (req, res, next) => {
     passport.authenticate('local', (err, user, info) => {
-        if (err)  return res.status(500).json({ error: err.message });
+        if (err) return res.status(500).json({ error: err.message });
         if (!user) return res.status(401).json({ message: info.message });
 
         req.login(user, (err) => {
@@ -129,7 +129,7 @@ app.put("/api/update_user_data/username", authenticateToken, (req, res) => {
 app.put("/api/update_user_data/image", authenticateToken, async (req, res) => {
     const image = req.body?.image;
     const bufferImage = Buffer.from(image, 'base64');
- 
+
     db.get('SELECT * FROM users WHERE id = ?;', [req.user.id], (err, user) => {
         if (err) return res.status(500).json({ error: err.message });
         if (!user) return res.status(404).json({ message: "User not found" });
@@ -193,6 +193,7 @@ app.get("/api/get_tasks", authenticateToken, async (req, res) => {
 
         return res.json(tasks);
     } catch (err) {
+        console.error(err);
         return res.status(500).json({ error: err.message });
     }
 })
@@ -202,7 +203,7 @@ async function getSubTasks(user, task) {
         db.all('SELECT * FROM sub_task WHERE user_id = ? AND parent_task_id = ?;', [user, task.id], (err, subtasks) => {
             if (err) return reject(err);
 
-            resolve(subtasks);       
+            resolve(subtasks);
         })
     });
 }
@@ -212,7 +213,7 @@ app.post("/api/tasks/create", authenticateToken, async (req, res) => {
     const task_type = parent_task ? "sub" : "parent";
 
     if (!task_name) return res.status(400).json({ message: "Task name is required" });
-    
+
     db.get('SELECT * FROM users WHERE id = ?;', [req.user.id], (err, user) => {
         if (err) return res.status(500).json({ error: err.message });
         if (!user) return res.status(404).json({ message: "User not found" });
@@ -289,7 +290,59 @@ app.put("/api/tasks/update/completed", authenticateToken, async (req, res) => {
     }
 })
 
-app.listen(3000, "192.168.0.189", (error) => {
+app.put("/api/tasks/update/details", authenticateToken, (req, res) => {
+    const { id, task_type, task_name, due_date } = req.body;
+    console.log(req.body);
+
+    if (!id) return res.status(400).json({ message: "Task ID is required" });
+    if (!task_type) return res.status(400).json({ message: "Task type is required" });
+
+    db.get('SELECT * FROM users WHERE id = ?;', [req.user.id], (err, user) => {
+        if (err) return res.status(500).json({ error: err.message });
+
+        const encryptionKey = getKey(req.user.enteredPassword, user.password.split("$")[3]);
+        const iv = Buffer.from(user.iv, 'hex');
+        const encryptedTaskName = encrypt(task_name, encryptionKey, iv);
+        const encryptedDueDate = due_date ? encrypt(due_date, encryptionKey, iv) : null;
+
+        if (task_type.toLowerCase() === "parent") {
+            db.run('UPDATE parent_task SET task_name = ?, due_date = ? WHERE id = ?;', [encryptedTaskName, encryptedDueDate, id], (err) => {
+                if (err) return res.status(500).json({ error: err.message });
+
+                return res.json({ message: "Task updated successfully" });
+            })
+        } else if (task_type.toLowerCase() === "sub") {
+            db.run('UPDATE sub_task SET task_name = ?, due_date = ? WHERE id = ?;', [encryptedTaskName, encryptedDueDate, id], (err) => {
+                if (err) return res.status(500).json({ error: err.message });
+
+                return res.json({ message: "Task updated successfully" });
+            })
+        }
+    })
+})
+
+app.post("/api/create_account", async (req, res) => {
+    const { username, password } = req.body;
+
+    if (!username) return res.status(400).json({ message: "Username is required" });
+    if (!password) return res.status(400).json({ message: "Password is required" });
+
+    bcrypt.hash(password, 10, async (err, hash) => {
+        if (err) return res.status(500).json({ error: err.message });
+
+        const iv = createIv();
+        const userImage = fs.readFileSync(path.join(__dirname, 'assets', 'logo.png'));
+        const encryptedImage = encryptImage(userImage, getKey(password, hash.split("$")[3]), iv);
+
+        db.run('INSERT INTO users (username, password, user_image, iv) VALUES (?, ?, ?, ?);', [username, hash, encryptedImage, iv.toString('hex')], (err) => {
+            if (err) return res.status(500).json({ error: err.message });
+
+            return res.json({ message: "Account created successfully" });
+        })
+    })
+})
+
+app.listen(3000, "172.30.28.184", (error) => {
     if (error) {
         console.error(error);
         return;
