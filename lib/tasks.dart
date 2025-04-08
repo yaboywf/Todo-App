@@ -1,5 +1,3 @@
-// ignore_for_file: avoid_print
-
 import 'package:flutter/material.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
@@ -44,7 +42,6 @@ class _TasksState extends State<Tasks> {
         Navigator.pushReplacementNamed(context, "/");
       }
     } catch (err) {
-      print(err);
       if (!context.mounted) return;
       Navigator.pushReplacementNamed(context, "/");
     }
@@ -73,11 +70,9 @@ class _TasksState extends State<Tasks> {
 
           setState(() => tasks = tasksMap);
         }
-      } else {
-        print("Error: ${json.decode(response.body)}");
       }
     } catch (err) {
-      print("error in fetching data: $err");
+      // errors would not be stated
     }
   }
 
@@ -132,8 +127,6 @@ class _TasksState extends State<Tasks> {
       if (response.statusCode == 200) {
         if (!context.mounted) return;
         Navigator.pushReplacementNamed(context, "/tasks");
-      } else {
-        print("Error: ${json.decode(response.body)}");
       }
     }
 
@@ -242,8 +235,6 @@ class _TasksState extends State<Tasks> {
       if (response.statusCode == 200) {
         if (!context.mounted) return;
         Navigator.pushReplacementNamed(context, "/tasks");
-      } else {
-        print("Error: ${json.decode(response.body)}");
       }
     }
 
@@ -363,7 +354,6 @@ class _TasksState extends State<Tasks> {
 
     if (response.statusCode != 200) {
       if (!context.mounted) return;
-      print("Error: ${json.decode(response.body)}");
     }
   }
 
@@ -384,7 +374,6 @@ class _TasksState extends State<Tasks> {
       Navigator.pushReplacementNamed(context, "/tasks");
     } else {
       if (!context.mounted) return;
-      print("Error: ${json.decode(response.body)}");
     }
   }
 

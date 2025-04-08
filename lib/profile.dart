@@ -1,5 +1,3 @@
-// ignore_for_file: avoid_print
-
 import 'package:flutter/material.dart';
 import 'dart:convert';
 import 'package:http/http.dart' as http;
@@ -56,7 +54,6 @@ class _ProfilePageState extends State<ProfilePage> {
         });
       }
     } catch (err) {
-      print(err);
       if (!context.mounted) return;
       Navigator.pushReplacementNamed(context, "/");
     }
@@ -204,8 +201,6 @@ class _ProfilePageState extends State<ProfilePage> {
       if (response.statusCode == 200) {
         if (!context1.mounted) return;
         showAlertDialog(context1, "Account deleted", afterwards: () => Navigator.pushReplacementNamed(context1, "/"));
-      } else {
-        print("Error: ${json.decode(response.body)}");
       }
     }
 
